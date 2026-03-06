@@ -1,0 +1,8 @@
+graph:
+
+  entry_point: init_node
+
+  passthrough_nodes:
+    - init_node
+
+  

@@ -1,0 +1,17 @@
+project:
+  name: citeguard
+  version: 1.0.0
+  root: . 
+
+  embeddings:
+    model: text-embedding-3-small
+    top_k: 5
+
+pipeline:
+  citeguard:
+    version: v0
+    base: config/pipeline/citeguard
+    files:
+      nodes: agents.yml
+      graph_structure: graph_structure.yml
+      rendered_graph: pipeline.png

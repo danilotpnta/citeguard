@@ -1,0 +1,9 @@
+agents:
+  math_teacher_agent:
+    prompt_path: app/agents/prompts/math_teacher/
+    prompt_version: prompt_v1
+    provider: openai
+    model: gpt-4.1-nano
+    temperature: 0.0
+    max_tokens: 800
+
