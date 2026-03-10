@@ -3,7 +3,15 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
+from app.core.monitoring import performance_tracker
+from app.services.citeguard_service import CiteGuardService
 from app.api.middleware.rate_limit import check_rate_limit
+from app.api.dependencies import get_current_token
+from app.core.logging import (
+    get_logger,
+    set_request_context,
+    clear_request_context,
+)
 from app.models.schemas import (
     ReferenceResult,
     ReferenceStatus,
@@ -13,10 +21,15 @@ from app.models.schemas import (
 )
 from app.models.token import Token
 
+logger = get_logger(__name__)
+
 router = APIRouter(tags=["verify"])
 
 # In-memory job store. Will be replaced by a proper store if we go async.
 _jobs: dict[str, VerifyResponse] = {}
+
+# Initialize service (singleton)
+citeguard_service = CiteGuardService()
 
 
 @router.post("/verify", response_model=VerifyResponse)
@@ -28,10 +41,22 @@ async def verify_text(
     Submit text containing references to verify.
     Each reference is checked against scholarly databases.
     """
-    job_id = uuid.uuid4().hex[:16]
+    job_id = f"job_{uuid.uuid4().hex[:12]}"
+    set_request_context(request_id=job_id, user_id=token.company)
 
-    # TODO: Phase 5 -- replace stub with LangGraph pipeline call
-    results = _stub_results(body.text)
+    try:
+        # Call service layer (all business logic is there)
+        with performance_tracker.track("verify_from_text_total"):
+            results = await citeguard_service.verify_from_text(
+                text=body.text,
+                user_id=token.token_id,
+            )
+            # results = _stub_results(body.text)
+
+        logger.info(f"Verification pipeline run successfully")
+
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}", exc_info=True)
 
     verified = sum(1 for r in results if r.status == ReferenceStatus.VERIFIED)
     suspicious = sum(1 for r in results if r.status == ReferenceStatus.SUSPICIOUS)
@@ -52,6 +77,7 @@ async def verify_text(
     )
 
     _jobs[job_id] = response
+    clear_request_context()
     return response
 
 
@@ -87,7 +113,9 @@ async def verify_file(
 
     # TODO: Phase 4 -- parse file with services/parser.py
     # TODO: Phase 5 -- replace stub with LangGraph pipeline call
-    text = content.decode("utf-8", errors="ignore") if content_type == "text/plain" else ""
+    text = (
+        content.decode("utf-8", errors="ignore") if content_type == "text/plain" else ""
+    )
     results = _stub_results(text)
 
     verified = sum(1 for r in results if r.status == ReferenceStatus.VERIFIED)
@@ -115,7 +143,7 @@ async def verify_file(
 @router.get("/verify/{job_id}", response_model=VerifyResponse)
 async def get_result(
     job_id: str,
-    token: Token = Depends(check_rate_limit),
+    token: Token = Depends(get_current_token),
 ):
     """
     Retrieve verification results by job ID.
@@ -126,7 +154,9 @@ async def get_result(
 
     # Only allow the token that created the job to view it
     if job.token_id != token.token_id:
-        raise HTTPException(status_code=403, detail="You do not have access to this job.")
+        raise HTTPException(
+            status_code=403, detail="You do not have access to this job."
+        )
 
     return job
 
