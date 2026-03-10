@@ -18,17 +18,6 @@ class ReferenceStatus(str, Enum):
     UNRESOLVED = "unresolved"
 
 
-class VerifyRequest(BaseModel):
-    """Request body for the /verify endpoint when sending raw text."""
-
-    text: str = Field(
-        ...,
-        min_length=1,
-        max_length=50000,
-        description="Text containing references to verify",
-    )
-
-
 class ReferenceResult(BaseModel):
     """Verification result for a single reference."""
 
@@ -50,6 +39,27 @@ class ReferenceResult(BaseModel):
     match_details: str | None = Field(
         None, description="Explanation of why this status was assigned"
     )
+
+
+# ============================================================================
+# REQUEST MODELS
+# ============================================================================
+
+
+class VerifyRequest(BaseModel):
+    """Request body for the /verify endpoint when sending raw text."""
+
+    text: str = Field(
+        ...,
+        min_length=1,
+        max_length=50000,
+        description="Text containing references to verify",
+    )
+
+
+# ============================================================================
+# RESPONSE MODELS
+# ============================================================================
 
 
 class VerifyResponse(BaseModel):

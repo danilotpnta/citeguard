@@ -1,6 +1,6 @@
 from fastapi import Depends, Header, HTTPException, Request, status
 
-from app.config import Settings, get_settings
+from app.core.config import Settings,  
 from app.db.tokens import get_token
 from app.models.token import Token
 
