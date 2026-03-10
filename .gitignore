@@ -16,6 +16,7 @@ wheels/
 *.swo
 *~
 .DS_Store
+Thumbs.db
 
 # Virtual environments
 env/
@@ -34,4 +35,9 @@ bin/
 *.jpg
 *.webp
 *.png
+
+# Database
+*.db
+*.sqlite
+data/
 
