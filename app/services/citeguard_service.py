@@ -1,6 +1,7 @@
-from typing import Optional
-from app.schemas.api import CreateRecipeResponse
+
 from app.core.logging import get_logger
+from app.models.schemas import VerifyResponse
+
 
 from app.graph.citeguard_graph import citeguard_graph
 from langfuse import observe, propagate_attributes
@@ -17,7 +18,7 @@ class CiteGuardService:
         token_id: str,
         content_type: str = "text/plain",
         filename: str | None = None,
-    ) -> CreateRecipeResponse:
+    ) -> VerifyResponse:
 
         with propagate_attributes(
             user_id=token_id,
@@ -42,7 +43,7 @@ class CiteGuardService:
         token_id: str,
         content_type: str,
         filename: str | None = None,
-    ) -> CreateRecipeResponse:
+    ) -> VerifyResponse:
 
         with propagate_attributes(
             user_id=token_id,
