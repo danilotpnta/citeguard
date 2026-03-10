@@ -35,6 +35,7 @@ bin/
 *.jpg
 *.webp
 *.png
+!pipeline_*.png
 
 # Database
 *.db
