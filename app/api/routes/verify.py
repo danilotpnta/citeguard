@@ -1,12 +1,19 @@
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    UploadFile,
+)
+from app.models.token import Token
+from app.api.dependencies import get_current_token
 from app.core.monitoring import performance_tracker
 from app.services.citeguard_service import CiteGuardService
 from app.api.middleware.rate_limit import check_rate_limit
-from app.api.dependencies import get_current_token
+
 from app.core.logging import (
     get_logger,
     set_request_context,
@@ -19,11 +26,17 @@ from app.models.schemas import (
     VerifyRequest,
     VerifyResponse,
 )
-from app.models.token import Token
+
+router = APIRouter(tags=["verify"])
 
 logger = get_logger(__name__)
 
-router = APIRouter(tags=["verify"])
+ALLOWED_TYPES = {
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/plain",
+}
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
 # In-memory job store. Will be replaced by a proper store if we go async.
 _jobs: dict[str, VerifyResponse] = {}
@@ -41,40 +54,22 @@ async def verify_text(
     Submit text containing references to verify.
     Each reference is checked against scholarly databases.
     """
-    job_id = f"job_{uuid.uuid4().hex[:12]}"
+    job_id = f"job_text_{uuid.uuid4().hex[:12]}"
     set_request_context(request_id=job_id, user_id=token.company)
 
     try:
         # Call service layer (all business logic is there)
         with performance_tracker.track("verify_from_text_total"):
-            results = await citeguard_service.verify_from_text(
-                text=body.text,
-                user_id=token.token_id,
+            response = await citeguard_service.verify_from_text(
+                raw_input=body.text,
+                content_type="text/plain",
+                token_id=token.token_id,
             )
-            # results = _stub_results(body.text)
 
         logger.info(f"Verification pipeline run successfully")
 
     except Exception as e:
         logger.error(f"Unexpected error: {e}", exc_info=True)
-
-    verified = sum(1 for r in results if r.status == ReferenceStatus.VERIFIED)
-    suspicious = sum(1 for r in results if r.status == ReferenceStatus.SUSPICIOUS)
-    hallucinated = sum(1 for r in results if r.status == ReferenceStatus.HALLUCINATED)
-    unresolved = sum(1 for r in results if r.status == ReferenceStatus.UNRESOLVED)
-
-    response = VerifyResponse(
-        job_id=job_id,
-        status=VerificationStatus.COMPLETED,
-        created_at=datetime.now(UTC),
-        token_id=token.token_id,
-        total_references=len(results),
-        verified=verified,
-        suspicious=suspicious,
-        hallucinated=hallucinated,
-        unresolved=unresolved,
-        references=results,
-    )
 
     _jobs[job_id] = response
     clear_request_context()
@@ -89,13 +84,8 @@ async def verify_file(
     """
     Upload a PDF, DOCX, or TXT file containing references to verify.
     """
-    allowed_types = {
-        "application/pdf",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "text/plain",
-    }
     content_type = file.content_type or ""
-    if content_type not in allowed_types:
+    if content_type not in ALLOWED_TYPES:
         raise HTTPException(
             status_code=400,
             detail=f"Unsupported file type: {content_type}. Accepted: PDF, DOCX, TXT.",
@@ -103,40 +93,32 @@ async def verify_file(
 
     content = await file.read()
 
-    if len(content) > 5 * 1024 * 1024:
+    if len(content) > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=413,
             detail="File too large. Maximum size is 5MB.",
         )
 
-    job_id = uuid.uuid4().hex[:16]
+    job_id = f"job_file_{uuid.uuid4().hex[:12]}"
+    set_request_context(request_id=job_id, user_id=token.company)
 
-    # TODO: Phase 4 -- parse file with services/parser.py
-    # TODO: Phase 5 -- replace stub with LangGraph pipeline call
-    text = (
-        content.decode("utf-8", errors="ignore") if content_type == "text/plain" else ""
-    )
-    results = _stub_results(text)
+    try:
+        # Call service layer (all business logic is there)
+        with performance_tracker.track("verify_from_file_total"):
+            response = await citeguard_service.verify_from_file(
+                raw_input=content,
+                content_type=content_type,
+                token_id=token.token_id,
+                filename=file.filename,
+            )
 
-    verified = sum(1 for r in results if r.status == ReferenceStatus.VERIFIED)
-    suspicious = sum(1 for r in results if r.status == ReferenceStatus.SUSPICIOUS)
-    hallucinated = sum(1 for r in results if r.status == ReferenceStatus.HALLUCINATED)
-    unresolved = sum(1 for r in results if r.status == ReferenceStatus.UNRESOLVED)
+        logger.info(f"Verification pipeline run successfully")
 
-    response = VerifyResponse(
-        job_id=job_id,
-        status=VerificationStatus.COMPLETED,
-        created_at=datetime.now(UTC),
-        token_id=token.token_id,
-        total_references=len(results),
-        verified=verified,
-        suspicious=suspicious,
-        hallucinated=hallucinated,
-        unresolved=unresolved,
-        references=results,
-    )
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}", exc_info=True)
 
     _jobs[job_id] = response
+    clear_request_context()
     return response
 
 
