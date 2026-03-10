@@ -4,7 +4,7 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-from app.config import Settings, get_settings
+from app.core.config import Settings, get_settings
 from app.db.database import init_db, set_db_path
 from app.db.tokens import create_token
 from app.main import create_app

@@ -7,7 +7,7 @@ import click
 # Need to ensure project root is in sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.config import get_settings
+from app.core.config import get_settings
 from app.db.database import init_db, set_db_path
 from app.db.tokens import create_token, get_token, list_tokens, revoke_token
 from app.db.usage import get_usage_summary

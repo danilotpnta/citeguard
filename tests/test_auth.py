@@ -3,7 +3,7 @@ from httpx import ASGITransport, AsyncClient
 from fastapi import FastAPI, Depends
 
 from app.api.dependencies import get_current_token, require_admin
-from app.config import Settings, get_settings
+from app.core.config import Settings, get_settings
 from app.db.tokens import create_token, revoke_token, increment_usage
 from app.models.token import Token
 
