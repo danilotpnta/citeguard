@@ -32,7 +32,7 @@ async def test_logging_records_authenticated_request(setup_test_db):
     app = _create_app()
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.get(f"/protected?token={token.token_id}")
+        resp = await client.get("/protected", headers={"X-API-Key": token.token_id})
 
     assert resp.status_code == 200
 
@@ -64,8 +64,11 @@ async def test_logging_captures_ip_from_x_forwarded_for(setup_test_db):
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get(
-            f"/protected?token={token.token_id}",
-            headers={"X-Forwarded-For": "203.0.113.50, 10.0.0.1"},
+            "/protected",
+            headers={
+                "X-API-Key": token.token_id,
+                "X-Forwarded-For": "203.0.113.50, 10.0.0.1",
+            },
         )
 
     assert resp.status_code == 200
@@ -83,8 +86,9 @@ async def test_logging_captures_cf_connecting_ip(setup_test_db):
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get(
-            f"/protected?token={token.token_id}",
+            "/protected",
             headers={
+                "X-API-Key": token.token_id,
                 "CF-Connecting-IP": "198.51.100.25",
                 "X-Forwarded-For": "203.0.113.50",
             },

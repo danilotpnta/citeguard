@@ -30,19 +30,6 @@ def _create_app() -> FastAPI:
 
 
 @pytest.mark.asyncio
-async def test_auth_with_query_param(setup_test_db):
-    """Token passed as ?token= query param should authenticate."""
-    token = await create_token(company="QueryCorp")
-    app = _create_app()
-
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.get(f"/protected?token={token.token_id}")
-
-    assert resp.status_code == 200
-    assert resp.json()["company"] == "QueryCorp"
-
-
-@pytest.mark.asyncio
 async def test_auth_with_header(setup_test_db):
     """Token passed as X-API-Key header should authenticate."""
     token = await create_token(company="HeaderCorp")
@@ -73,7 +60,7 @@ async def test_auth_invalid_token(setup_test_db):
     app = _create_app()
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.get("/protected?token=bogus999999")
+        resp = await client.get("/protected", headers={"X-API-Key": "bogus999999"})
 
     assert resp.status_code == 401
     assert "Invalid" in resp.json()["detail"]
@@ -87,7 +74,7 @@ async def test_auth_revoked_token(setup_test_db):
     app = _create_app()
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.get(f"/protected?token={token.token_id}")
+        resp = await client.get("/protected", headers={"X-API-Key": token.token_id})
 
     assert resp.status_code == 403
     assert "revoked" in resp.json()["detail"]
@@ -101,7 +88,7 @@ async def test_auth_exhausted_token(setup_test_db):
     app = _create_app()
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.get(f"/protected?token={token.token_id}")
+        resp = await client.get("/protected", headers={"X-API-Key": token.token_id})
 
     assert resp.status_code == 403
     assert "exhausted" in resp.json()["detail"]

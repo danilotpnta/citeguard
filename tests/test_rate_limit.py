@@ -21,6 +21,10 @@ def _create_app() -> FastAPI:
     return app
 
 
+def _auth(token) -> dict:
+    return {"X-API-Key": token.token_id}
+
+
 @pytest.mark.asyncio
 async def test_rate_limit_increments_usage(setup_test_db):
     """Each request should increment used_requests by 1."""
@@ -28,7 +32,7 @@ async def test_rate_limit_increments_usage(setup_test_db):
     app = _create_app()
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.post(f"/verify?token={token.token_id}")
+        resp = await client.post("/verify", headers=_auth(token))
 
     assert resp.status_code == 200
 
@@ -44,11 +48,11 @@ async def test_rate_limit_allows_up_to_max(setup_test_db):
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         for i in range(3):
-            resp = await client.post(f"/verify?token={token.token_id}")
+            resp = await client.post("/verify", headers=_auth(token))
             assert resp.status_code == 200
 
         # The 4th request: token is now exhausted, get_current_token rejects it
-        resp = await client.post(f"/verify?token={token.token_id}")
+        resp = await client.post("/verify", headers=_auth(token))
         assert resp.status_code in (403, 429)
 
 
@@ -61,9 +65,9 @@ async def test_rate_limit_different_tokens_independent(setup_test_db):
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         # Use up all of t1
-        await client.post(f"/verify?token={t1.token_id}")
-        await client.post(f"/verify?token={t1.token_id}")
+        await client.post("/verify", headers=_auth(t1))
+        await client.post("/verify", headers=_auth(t1))
 
         # t2 should still work
-        resp = await client.post(f"/verify?token={t2.token_id}")
+        resp = await client.post("/verify", headers=_auth(t2))
         assert resp.status_code == 200
