@@ -2,15 +2,15 @@ from typing import Literal
 from app.graph.state import WorkflowState
 
 
-def decide_input_type(state: WorkflowState) -> Literal["text", "file"]:
+def decide_content_type(state: WorkflowState) -> Literal["text", "file"]:
     """
     Called after: router_input_node
     Checks:       state["input_type"]
     Returns:
-        "text" → goes to process_text_input_node
-        "file"  → goes to identify_file_type_node
+        "text" → goes to parse_content_from_file_node
+        "file"  → goes to gather_all_info_node
     """
-    return state["input_type"]
+    return state["content_type"]
 
 
 def decide_file_type(state: WorkflowState) -> Literal["pdf", "doc", "txt"]:
