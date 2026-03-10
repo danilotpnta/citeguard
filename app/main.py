@@ -1,4 +1,4 @@
-import logging
+from pathlib import Path
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -6,17 +6,23 @@ from fastapi import FastAPI
 from app.api.middleware.killswitch import KillswitchMiddleware
 from app.api.middleware.logging import LoggingMiddleware
 from app.api.routes import admin, health, verify
-from app.config import get_settings
+from app.core.config import get_settings
 from app.db.database import init_db, set_db_path
+from app.core.logging import setup_logging, get_logger
+from app.core.config import settings
 
-logger = logging.getLogger("citeguard")
+setup_logging(
+    log_level="DEBUG",
+    log_file=None,
+    enable_colors=True,
+)
+
+logger = get_logger("citeguard")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown logic."""
-    # -- Startup --
-    settings = get_settings()
     set_db_path(settings.database_url)
     await init_db()
     logger.info("Database initialized at %s", settings.database_path)
