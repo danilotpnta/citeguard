@@ -13,28 +13,49 @@ class CiteGuardService:
     @observe(name="verify_from_text")
     async def verify_from_text(
         self,
-        text: str,
-        user_id: str,
+        raw_input: str,
+        token_id: str,
+        content_type: str = "text/plain",
+        filename: str | None = None,
     ) -> CreateRecipeResponse:
 
-
         with propagate_attributes(
-            user_id=user_id,
+            user_id=token_id,
             metadata={
-                "text": text,
-                "input_type": "text",
+                "content_type": content_type,
             },
             tags=["copied_text"],
         ):
-
             result = await citeguard_graph.ainvoke(
                 {
-                    "doc_text": text,
-                    "input_type": "text",
-                    "user_id": user_id,
+                    "raw_input": raw_input,
+                    "content_type": content_type,
+                    "filename": filename,
                 }
             )
-            
             return result
 
-    
+    @observe(name="verify_from_file")
+    async def verify_from_file(
+        self,
+        raw_input: bytes,
+        token_id: str,
+        content_type: str,
+        filename: str | None = None,
+    ) -> CreateRecipeResponse:
+
+        with propagate_attributes(
+            user_id=token_id,
+            metadata={
+                "content_type": content_type,
+            },
+            tags=["uploaded_file"],
+        ):
+            result = await citeguard_graph.ainvoke(
+                {
+                    "raw_input": raw_input,
+                    "content_type": content_type,
+                    "filename": filename,
+                }
+            )
+            return result
