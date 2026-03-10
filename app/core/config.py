@@ -1,4 +1,5 @@
 from pathlib import Path
+from pydantic import Field
 from omegaconf import OmegaConf
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -12,12 +13,14 @@ class Settings(BaseSettings):
     )
 
     # -- Langfuse --
-    langfuse_secret_key: str = ""
-    langfuse_public_key: str = ""
+    langfuse_secret_key: str = Field(..., description="Langfuse secret key")
+    langfuse_public_key: str = Field(..., description="Langfuse public key")
     langfuse_base_url: str = "https://cloud.langfuse.com"
 
     # -- LLM --
-    openai_api_key: str = ""
+    openai_api_key: str = Field(..., description="OpenAI API key")
+    google_api_key: str = Field(..., description="Google API key for Gemini access")
+    groq_api_key: str = Field(..., description="Groq API key for ingredient extraction")
 
     # -- Admin --
     admin_api_key: str = "change-me-to-a-long-random-string"
@@ -29,6 +32,10 @@ class Settings(BaseSettings):
     crossref_mailto: str = ""
     semantic_scholar_api_key: str = ""
     ncbi_api_key: str = ""
+
+    # -- Logging --
+    log_level: str = Field(..., description="Logging level setting")
+    environment: str = Field(..., description="FastAPI setting")
 
     @property
     def database_url(self) -> str:
