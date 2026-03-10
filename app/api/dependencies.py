@@ -1,4 +1,4 @@
-from fastapi import Depends, Header, HTTPException, Query, Request, status
+from fastapi import Depends, Header, HTTPException, Request, status
 
 from app.config import Settings, get_settings
 from app.db.tokens import get_token
@@ -7,28 +7,21 @@ from app.models.token import Token
 
 async def get_current_token(
     request: Request,
-    token: str | None = Query(None, alias="token"),
     x_api_key: str | None = Header(None),
 ) -> Token:
     """
-    Extract and validate the access token from the request.
+    Extract and validate the access token from X-API-Key header.
 
-    Accepts the token from:
-      1. Query parameter: ?token=abc123
-      2. Header: X-API-Key: abc123
-
-    The query parameter is the primary method (used in demo links).
-    The header is an alternative for programmatic access.
+    The frontend reads the token from the demo URL and sends it
+    as this header on every API call.
     """
-    token_id = token or x_api_key
-
-    if not token_id:
+    if not x_api_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing access token. Provide ?token= or X-API-Key header.",
+            detail="Missing access token. Provide X-API-Key header.",
         )
 
-    token_obj = await get_token(token_id)
+    token_obj = await get_token(x_api_key)
 
     if token_obj is None:
         raise HTTPException(
