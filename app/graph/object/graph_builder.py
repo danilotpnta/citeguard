@@ -23,6 +23,7 @@ class GraphBuilder:
         self.state_schema = state_schema
         self.modules = modules
         self.registry = self._load_functions()
+        self.passthrough_nodes: set[str] = set()  # populated during build()
         self.app = None  # populated after build()
 
     # ── Config & Registry ─────────────────────────────────────────────────────
@@ -100,7 +101,7 @@ class GraphBuilder:
         self,
         gc: dict,
         label: str = "root",
-        print_report: bool = False
+        print_report: bool = False,
     ) -> StateGraph:
         """
         Build and compile a graph from a config dict.
@@ -161,6 +162,7 @@ class GraphBuilder:
         for name in gc.get("passthrough_nodes", []):
             builder.add_node(name, lambda s: {})
             mentioned.discard(name)
+            self.passthrough_nodes.add(name)
 
         for sg_name, sg_compiled in compiled_subgraphs.items():
             builder.add_node(sg_name, sg_compiled)
@@ -215,6 +217,15 @@ class GraphBuilder:
             )
 
         return builder.compile()
+
+    # ── Properties ────────────────────────────────────────────────────────────────
+
+    @property
+    def node_registry(self) -> dict:
+        """Registry filtered to only real nodes — passthrough lambdas excluded."""
+        return {
+            k: v for k, v in self.registry.items() if k not in self.passthrough_nodes
+        }
 
     # ── Public ────────────────────────────────────────────────────────────────
 

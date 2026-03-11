@@ -5,7 +5,6 @@ graph:
   passthrough_nodes:
     - router_input_node
     - gather_all_info_node
-    - parse_content_from_file_node
 
   edges:
     parse_content_from_file_node: gather_all_info_node

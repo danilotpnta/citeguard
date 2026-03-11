@@ -21,7 +21,7 @@ def save_pipeline_graph(filename="pipeline.png"):
     img_path = os.path.join(parent_dir, filename)
     render_langgraph_png(
         app=builder.app,
-        registry=builder.registry,
+        registry=builder.node_registry,
         path=img_path,
     )
 
