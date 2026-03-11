@@ -13,6 +13,7 @@ from app.api.dependencies import get_current_token
 from app.core.monitoring import performance_tracker
 from app.services.citeguard_service import CiteGuardService
 from app.api.middleware.rate_limit import check_rate_limit
+from app.models.constants import ContentType, UploadConfig
 
 from app.core.logging import (
     get_logger,
@@ -31,12 +32,6 @@ router = APIRouter(tags=["verify"])
 
 logger = get_logger(__name__)
 
-ALLOWED_TYPES = {
-    "application/pdf",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "text/plain",
-}
-MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
 # In-memory job store. Will be replaced by a proper store if we go async.
 _jobs: dict[str, VerifyResponse] = {}
@@ -67,12 +62,13 @@ async def verify_text(
             )
 
         logger.info(f"Verification pipeline run successfully")
-
+        _jobs[job_id] = response
     except Exception as e:
         logger.error(f"Unexpected error: {e}", exc_info=True)
+        raise
+    finally:
+        clear_request_context()
 
-    _jobs[job_id] = response
-    clear_request_context()
     return response
 
 
@@ -84,16 +80,14 @@ async def verify_file(
     """
     Upload a PDF, DOCX, or TXT file containing references to verify.
     """
-    content_type = file.content_type or ""
-    if content_type not in ALLOWED_TYPES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type: {content_type}. Accepted: PDF, DOCX, TXT.",
-        )
-
+    try:
+        content_type = ContentType.from_mime(file.content_type or "").short
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    logger.info(f"Processing filename {file.filename}")
     content = await file.read()
 
-    if len(content) > MAX_FILE_SIZE:
+    if len(content) > UploadConfig.MAX_FILE_SIZE:
         raise HTTPException(
             status_code=413,
             detail="File too large. Maximum size is 5MB.",
@@ -113,12 +107,13 @@ async def verify_file(
             )
 
         logger.info(f"Verification pipeline run successfully")
-
+        _jobs[job_id] = response
     except Exception as e:
         logger.error(f"Unexpected error: {e}", exc_info=True)
+        raise
+    finally:
+        clear_request_context()
 
-    _jobs[job_id] = response
-    clear_request_context()
     return response
 
 
