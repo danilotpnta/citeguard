@@ -5,6 +5,7 @@ class ContentType(str, Enum):
     PDF = "application/pdf"
     DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     TEXT = "text/plain"
+    MD = "text/markdown"
 
     @classmethod
     def from_mime(cls, mime: str) -> "ContentType":
@@ -26,4 +27,5 @@ class UploadConfig:
         ContentType.PDF,
         ContentType.DOCX,
         ContentType.TEXT,
+        ContentType.MD,
     }

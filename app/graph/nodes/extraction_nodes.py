@@ -2,6 +2,7 @@ from app.graph.state import WorkflowState
 
 from app.core.logging import get_logger
 from app.agents.tools.parser.extractor import ParserTool
+from app.agents.reference_extractor import extract_references
 from langfuse import observe
 
 logger = get_logger(__name__)
@@ -24,3 +25,11 @@ async def parse_content_from_file_node(state: WorkflowState) -> dict:
     )
 
     return {"text": text}
+
+
+@observe(name="extract_references_node")
+async def extract_references_node(state: WorkflowState) -> dict:
+    raw_text = state["raw_input"]
+    extracted_references = extract_references(raw_text=raw_text)
+
+    return {"extracted_references": extracted_references}
