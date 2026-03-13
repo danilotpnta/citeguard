@@ -22,7 +22,7 @@ class ParserTool:
     @observe(name="_parse_pdf")
     def _parse_pdf(raw_input: bytes) -> str:
         """Extract text from a PDF using PyMuPDF."""
-        import fitz  # PyMuPDF
+        import fitz
 
         if not isinstance(raw_input, bytes):
             raise TypeError(f"_parse_pdf expects bytes, got {type(raw_input).__name__}")
@@ -54,7 +54,7 @@ class ParserTool:
     @classmethod
     def parse(cls, raw_input: str | bytes, content_type: str) -> str:
         """Dispatch to the appropriate parser based on content_type."""
-        if content_type == "text":
+        if content_type in ("text", "md"):
             return cls._parse_text(raw_input)
         elif content_type == "pdf":
             return cls._parse_pdf(raw_input)

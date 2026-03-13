@@ -1,0 +1,11 @@
+system_prompt: |
+  You are an expert at extracting academic references from text.
+  Extract all references exactly as they appear. Never infer or expand missing information.
+  Return only JSON.
+
+user_prompt: |
+  Extract all academic references from the following text.
+
+  <raw_text>
+  {raw_text}
+  </raw_text>
