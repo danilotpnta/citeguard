@@ -54,11 +54,24 @@ Langfuse will be available at `http://localhost:3000`. Create a project and gene
     ```
     Then open `.env` and fill in your keys.
 
+**Optional — DBLP local database:**
+ 
+For better CS conference paper coverage, build a local DBLP index (~4.6GB, runs once):
+ 
+```bash
+uv run python scripts/build_dblp_index.py
+```
+ 
+This downloads the full DBLP dataset and indexes it locally. After building, set:
+```
+DBLP_DB_PATH=./data/dblp/dblp.db
+```
 
 ## Usage
 
 ```bash
-uvicorn citeguard.main:app --reload
+# Development
+uv run uvicorn app.main:app --reload
 ```
 
 The API will be available at `http://localhost:8000`. Visit `/docs` for the interactive Swagger UI.
@@ -85,6 +98,49 @@ Citeguard runs a multi-agent pipeline (via LangGraph) that:
 4. **Scores** each reference as verified, suspicious, or hallucinated
 
 All runs are traced in Langfuse for full observability.
+
+
+ 
+## API Usage
+ 
+Submit text for verification:
+ 
+```bash
+curl -X POST http://localhost:8000/verify \
+  -H "Authorization: Bearer your-token" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "your text with references here", "content_type": "text"}'
+```
+ 
+Upload a file:
+ 
+```bash
+curl -X POST http://localhost:8000/verify \
+  -H "Authorization: Bearer your-token" \
+  -F "file=@paper.pdf"
+```
+ 
+Example response:
+ 
+```json
+{
+  "total": 16,
+  "verified": 10,
+  "needs_review": 1,
+  "likely_hallucinated": 2,
+  "unverifiable": 3,
+  "references": [
+    {
+      "title": "Attention is all you need",
+      "verdict": "VERIFIED",
+      "matched_url": "https://arxiv.org/abs/1706.03762",
+      "sources_checked": ["arxiv"]
+    }
+  ]
+}
+```
+ 
+---
 
 ## Terms of Use
 
