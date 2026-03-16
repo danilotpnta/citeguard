@@ -26,6 +26,8 @@ ENV/
 
 # Environment variables
 .env
+*.env.*
+!.env.example
 
 # Temporary files
 temp/
@@ -41,4 +43,10 @@ bin/
 *.db
 *.sqlite
 data/
+data/dblp/
+
+# DBLP local index
+dblp/
+*.db-shm
+*.db-wal
 
