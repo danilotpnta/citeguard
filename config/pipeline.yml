@@ -9,7 +9,7 @@ project:
 
 pipeline:
   citeguard:
-    version: v1
+    version: v4
     base: config/pipeline/citeguard
     files:
       nodes: agents.yml

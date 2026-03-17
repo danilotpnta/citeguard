@@ -54,7 +54,7 @@ TITLE_MATCH_THRESHOLD = 0.85
 MAX_CONCURRENT = 5  # conservative — no documented rate limit
 MAX_RESULTS = 10
 
-SEARCH_FIELDS = "key,title,author_name,first_publish_year,publisher,isbn"
+SEARCH_FIELDS = "key,title,author_name,first_publish_year,publisher"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -94,7 +94,15 @@ def _check_author_match(
         return None
 
     has_et_al = any("et al" in a.lower() for a in cited_authors)
-    real_cited = [a for a in cited_authors if "et al" not in a.lower()]
+
+    # Strip "et al." from names rather than discarding the whole string
+    # "John Smith et al." → "John Smith"
+    real_cited = [
+        re.sub(r"\bet\.?\s+al\.?.*", "", a, flags=re.IGNORECASE).strip()
+        for a in cited_authors
+    ]
+
+    real_cited = [a for a in real_cited if a]  # remove pure "et al." entries
 
     if not real_cited:
         return None
@@ -105,17 +113,13 @@ def _check_author_match(
     if not ol_lastnames:
         return None
 
-    match = bool(cited_lastnames & ol_lastnames)
-
     if has_et_al:
-        # Only first author was listed — if it matches, return None (partial)
-        # rather than True, to signal we couldn't confirm the full list
         first_lastname = _extract_lastname(real_cited[0])
         if first_lastname in ol_lastnames:
-            return None
-        return False
+            return None  # first author consistent, rest unknown
+        return False  # first author doesn't match — suspicious
 
-    return match
+    return bool(cited_lastnames & ol_lastnames)
 
 
 def _best_match(
@@ -132,7 +136,7 @@ def _best_match(
         title = candidate.get("title") or ""
         if not title:
             continue
-        score = fuzz.ratio(_normalize_title(title), norm_cited) / 100.0
+        score = fuzz.token_set_ratio(_normalize_title(title), norm_cited) / 100.0
         if score >= TITLE_MATCH_THRESHOLD:
             candidate["_title_similarity"] = score
             matches.append(candidate)
@@ -142,9 +146,7 @@ def _best_match(
 
     # Among title matches, prefer the one closest to cited year
     if ref.year:
-        matches.sort(
-            key=lambda c: abs(ref.year - (c.get("first_publish_year") or 0))
-        )
+        matches.sort(key=lambda c: abs(ref.year - (c.get("first_publish_year") or 0)))
 
     return matches[0]
 
@@ -162,9 +164,7 @@ def _build_source_result(
         )
 
     title_similarity = candidate.get("_title_similarity")
-    author_match = _check_author_match(
-        ref.authors, candidate.get("author_name")
-    )
+    author_match = _check_author_match(ref.authors, candidate.get("author_name"))
 
     year_delta: int | None = None
     ol_year = candidate.get("first_publish_year")
@@ -205,9 +205,7 @@ class OpenLibraryVerifier:
             self._client = httpx.AsyncClient(
                 timeout=TIMEOUT,
                 follow_redirects=True,
-                headers={
-                    "User-Agent": "citeguard/1.0 (mailto:citeguard@example.com)"
-                },
+                headers={"User-Agent": "citeguard/1.0 (mailto:citeguard@example.com)"},
             )
         return self._client
 
@@ -264,39 +262,42 @@ class OpenLibraryVerifier:
             "key": data.get("works", [{}])[0].get("key", ""),
         }
 
-    async def _search(
-        self, title: str, authors: list[str] | None = None
-    ) -> list[dict]:
+    async def _search(self, title: str, authors: list[str] | None = None) -> list[dict]:
         """
-        Two-pass search:
-          1. title + first author lastname
-          2. title only (fallback)
+        Two-pass search using q= (not title= or author=).
+        Combining title=/author= with fields= is a known FastAPI bug in OpenLibrary
+        that silently drops the query and returns empty results.
+        See: https://github.com/internetarchive/openlibrary/issues/11587
+
+        1. q = title + first author lastname (more specific)
+        2. q = title only (fallback)
         """
-        norm_title = _normalize_title(title)
-        if not norm_title:
+        if not title:
             return []
 
-        params: dict = {
+        base_params = {
             "fields": SEARCH_FIELDS,
             "limit": MAX_RESULTS,
         }
 
-        # Pass 1 — title + author
+        # Pass 1 — title + first author lastname combined in q
         if authors:
             real_authors = [a for a in authors if "et al" not in a.lower()]
             if real_authors:
                 lastname = _extract_lastname(real_authors[0])
-                params["title"] = title
-                params["author"] = lastname
-                data = await self._get(OL_SEARCH_URL, params=params)
+                data = await self._get(
+                    OL_SEARCH_URL,
+                    params={**base_params, "q": f"{title} {lastname}"},
+                )
                 results = (data or {}).get("docs", [])
                 if results:
                     return results
 
         # Pass 2 — title only
-        params.pop("author", None)
-        params["title"] = title
-        data = await self._get(OL_SEARCH_URL, params=params)
+        data = await self._get(
+            OL_SEARCH_URL,
+            params={**base_params, "q": title},
+        )
         return (data or {}).get("docs", [])
 
     async def verify(self, ref: ReferenceResult) -> VerificationResult:
