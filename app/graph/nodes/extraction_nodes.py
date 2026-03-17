@@ -14,8 +14,8 @@ async def parse_content_from_file_node(state: WorkflowState) -> dict:
     content_type = state.get("content_type", "text/plain")
 
     text = ParserTool.parse(raw_input, content_type=content_type)
-    print("Content:\n")
-    print(text[:200])
+    # print("Content:\n")
+    # print(text[:200])
 
     logger.info(
         "Parsed %s input (%d bytes) into %d characters of text",
@@ -29,7 +29,7 @@ async def parse_content_from_file_node(state: WorkflowState) -> dict:
 
 @observe(name="extract_references_node")
 async def extract_references_node(state: WorkflowState) -> dict:
-    raw_text = state["raw_input"]
+    raw_text = state.get("text") or state["raw_input"]
     extracted_references = extract_references(raw_text=raw_text)
 
     return {"extracted_references": extracted_references}

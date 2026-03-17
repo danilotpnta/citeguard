@@ -206,17 +206,24 @@ async def merge_results_node(state: WorkflowState) -> dict:
     arxiv_results: list[VerificationResult] = state.get("arxiv_results", [])
     search_results: list[VerificationResult] = state.get("search_results", [])
     dblp_results: list[VerificationResult] = state.get("dblp_results", [])
+    openlibrary_results: list[VerificationResult] = state.get("openlibrary_results", [])
 
     # Index by raw_reference for deduplication
     merged: dict[str, VerificationResult] = {}
 
-    for result in doi_results + arxiv_results + search_results + dblp_results:
-        key = result.reference.raw_reference
+    all_incoming = (
+        doi_results
+        + arxiv_results
+        + search_results
+        + dblp_results
+        + openlibrary_results
+    )
 
+    for result in all_incoming:
+        key = result.reference.raw_reference
         if key not in merged:
             merged[key] = result
         else:
-            # Paper appeared in multiple paths — merge source signals
             existing = merged[key]
             existing.sources_checked.extend(
                 s for s in result.sources_checked if s not in existing.sources_checked
@@ -227,18 +234,17 @@ async def merge_results_node(state: WorkflowState) -> dict:
 
     logger.info(
         "merge_results_node: %d total results "
-        "(doi=%d arxiv=%d search=%d dblp=%d deduplicated=%d)",
+        "(doi=%d arxiv=%d search=%d dblp=%d openlibrary=%d deduplicated=%d)",
         len(all_results),
         len(doi_results),
         len(arxiv_results),
         len(search_results),
         len(dblp_results),
-        len(doi_results)
-        + len(arxiv_results)
-        + len(search_results)
-        + len(dblp_results)
-        - len(all_results),
+        len(openlibrary_results),
+        len(all_incoming) - len(all_results),
     )
+
+    return {"merged_results": all_results}
 
     return {"merged_results": all_results}
 
@@ -246,40 +252,6 @@ async def merge_results_node(state: WorkflowState) -> dict:
 # ---------------------------------------------------------------------------
 # score_node
 # ---------------------------------------------------------------------------
-
-
-# @observe(name="score_node")
-# async def score_node(state: WorkflowState) -> dict:
-#     """
-#     Applies rule-based verdict to each merged VerificationResult.
-#     Mutates verdict field in place, returns scored_references.
-
-#     Called after: merge_results_node
-#     Writes to:    scored_references
-#     """
-#     merged_results: list[VerificationResult] = state.get("merged_results", [])
-
-#     verdict_counts: dict[str, int] = {}
-
-#     for result in merged_results:
-#         verdict = _determine_verdict(result)
-#         result.verdict = verdict
-#         verdict_counts[verdict] = verdict_counts.get(verdict, 0) + 1
-
-#         logger.info(
-#             "score_node [%s] → %s (sources: %s)",
-#             (result.reference.title or "?")[:50],
-#             verdict,
-#             [s.value for s in result.sources_checked],
-#         )
-
-#     logger.info(
-#         "score_node complete: %d references scored — %s",
-#         len(merged_results),
-#         verdict_counts,
-#     )
-
-#     return {"scored_references": merged_results}
 
 
 @observe(name="score_node")
