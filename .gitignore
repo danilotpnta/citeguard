@@ -50,3 +50,6 @@ dblp/
 *.db-shm
 *.db-wal
 
+# Local development notes
+DEVELOPMENT.md
+
