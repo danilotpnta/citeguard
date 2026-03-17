@@ -35,6 +35,7 @@ from tenacity import (
     wait_exponential,
 )
 
+from app.core.config import settings
 from app.core.logging import get_logger
 from app.models.schemas import (
     ReferenceResult,
@@ -290,7 +291,6 @@ class WebSearchVerifier:
         """Lazy-initialise on first use so settings are read at runtime."""
         if self._backend is not None:
             return self._backend
-        from app.core.config import settings
         if settings.searxng_url:
             self._backend = _SearXNGBackend(settings.searxng_url)
             self._backend_name = "searxng"
