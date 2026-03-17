@@ -10,6 +10,8 @@ builder = GraphBuilder(
         "app.graph.nodes.input_nodes",
         "app.graph.nodes.extraction_nodes",
         "app.graph.nodes.ai_nodes",
+        "app.graph.nodes.verification_nodes",
+        "app.graph.nodes.merge_and_score_nodes",
         "app.graph.routes",
     ],
 )

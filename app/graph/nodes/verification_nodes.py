@@ -1,4 +1,5 @@
 # app/graph/nodes/verification_nodes.py
+import re
 from typing import Literal
 
 from langfuse import observe
@@ -33,6 +34,50 @@ def _extract_arxiv_id_from_doi(doi: str) -> str | None:
 # classify_references_node
 # ---------------------------------------------------------------------------
 
+ARXIV_PATTERN = re.compile(r"arXiv[:\s]+(\d{4}\.\d{4,5})", re.IGNORECASE)
+DOI_PATTERN = re.compile(r"\b(10\.\d{4,}/\S+)", re.IGNORECASE)
+
+
+def _enrich_reference(ref: ReferenceResult) -> ReferenceResult:
+    """
+    Recover missing identifiers from raw_reference text.
+    Returns an enriched copy — never mutates the original.
+    """
+    updates = {}
+
+    # Recover DOI the LLM missed
+    if not ref.doi:
+        m = DOI_PATTERN.search(ref.raw_reference)
+        if m:
+            updates["doi"] = m.group(1).rstrip(".,)")
+
+    # Recover arXiv ID the LLM missed
+    if not ref.arxiv_id and not updates.get("doi"):
+        m = ARXIV_PATTERN.search(ref.raw_reference)
+        if m:
+            updates["arxiv_id"] = m.group(1)
+
+    # Promote arXiv DOI → arxiv_id
+    doi = updates.get("doi") or ref.doi
+    if doi and _is_arxiv_doi(doi) and not ref.arxiv_id:
+        extracted = _extract_arxiv_id_from_doi(doi)
+        if extracted:
+            updates["arxiv_id"] = extracted
+
+    if updates:
+        logger.debug("Enriched ref '%s': %s", ref.title or "?", updates)
+        return ref.model_copy(update=updates)
+    return ref
+
+
+def _classify_reference(ref: ReferenceResult) -> str:
+    """Return bucket name: 'doi' | 'arxiv' | 'neither'."""
+    if ref.doi and not _is_arxiv_doi(ref.doi):
+        return "doi"
+    if ref.arxiv_id or (ref.doi and _is_arxiv_doi(ref.doi)):
+        return "arxiv"
+    return "neither"
+
 
 @observe(name="classify_references_node")
 async def classify_references_node(state: WorkflowState) -> dict:
@@ -43,16 +88,12 @@ async def classify_references_node(state: WorkflowState) -> dict:
     refs_with_neither: list[ReferenceResult] = []
 
     for ref in references:
-        if ref.doi and not _is_arxiv_doi(ref.doi):
+        ref = _enrich_reference(ref)
+
+        bucket = _classify_reference(ref)
+        if bucket == "doi":
             refs_with_doi.append(ref)
-        elif ref.doi and _is_arxiv_doi(ref.doi):
-            # Promote to arXiv bucket, extracting ID from DOI if needed
-            if not ref.arxiv_id:
-                extracted = _extract_arxiv_id_from_doi(ref.doi)
-                if extracted:
-                    ref = ref.model_copy(update={"arxiv_id": extracted})
-            refs_with_arxiv.append(ref)
-        elif ref.arxiv_id:
+        elif bucket == "arxiv":
             refs_with_arxiv.append(ref)
         else:
             refs_with_neither.append(ref)
@@ -91,6 +132,11 @@ def _needs_title_search(result: VerificationResult) -> bool:
         return True
 
     title_ok = (sr.title_similarity or 0.0) >= 0.85
+
+    # None means no author data (et al.) — don't penalize, rely on title only
+    if sr.author_match is None:
+        return not title_ok
+
     author_ok = sr.author_match is True
 
     return not (title_ok and author_ok)
@@ -178,15 +224,85 @@ async def verify_arxiv_node(state: WorkflowState) -> dict:
 
 
 @observe(name="verify_search_node")
-async def verify_search_node(state: WorkflowState):
-    pass
+async def verify_search_node(state: WorkflowState) -> dict:
+    refs = state["refs_needing_search"]
+
+    from app.agents.tools.verifiers.openalex import openalex_verifier
+
+    oa_results = await openalex_verifier.verify_batch(refs)
+
+    # Collect refs OpenAlex didn't find — candidates for DBLP
+    refs_needing_dblp = [
+        result.reference
+        for result in oa_results
+        if not result.source_results or not result.source_results[0].found
+    ]
+
+    logger.info(
+        "verify_search_node: %d refs checked, %d not found → queuing for DBLP",
+        len(refs),
+        len(refs_needing_dblp),
+    )
+
+    return {
+        "search_results": oa_results,
+        "refs_needing_dblp": refs_needing_dblp,
+    }
 
 
-@observe(name="merge_results_node")
-async def merge_results_node(state: WorkflowState):
-    pass
+@observe(name="verify_dblp_node")
+async def verify_dblp_node(state: WorkflowState) -> dict:
+    refs = state.get("refs_needing_dblp", [])
+
+    if not refs:
+        logger.info("verify_dblp_node: no refs to check")
+        return {"dblp_results": [], "refs_needing_openlibrary": []}
+
+    from app.agents.tools.verifiers.dblp import dblp_verifier
+
+    if not dblp_verifier.available:
+        logger.info("verify_dblp_node: DBLP database not available — skipping")
+        return {"dblp_results": [], "refs_needing_openlibrary": refs}
+
+    results = dblp_verifier.verify_batch(refs)
+
+    found = sum(1 for r in results if r.source_results and r.source_results[0].found)
+    logger.info(
+        "verify_dblp_node: %d refs checked, %d found",
+        len(refs),
+        found,
+    )
+
+    # Refs DBLP didn't find → candidates for OpenLibrary
+    refs_needing_openlibrary = [
+        r.reference
+        for r in results
+        if not r.source_results or not r.source_results[0].found
+    ]
+
+    return {
+        "dblp_results": results,
+        "refs_needing_openlibrary": refs_needing_openlibrary,
+    }
 
 
-@observe(name="score_node")
-async def score_node(state: WorkflowState):
-    pass
+@observe(name="verify_openlibrary_node")
+async def verify_openlibrary_node(state: WorkflowState) -> dict:
+    refs = state.get("refs_needing_openlibrary", [])
+
+    if not refs:
+        logger.info("verify_openlibrary_node: no refs to check")
+        return {"openlibrary_results": []}
+
+    from app.agents.tools.verifiers.openlibrary import openlibrary_verifier
+
+    results = await openlibrary_verifier.verify_batch(refs)
+
+    found = sum(1 for r in results if r.source_results and r.source_results[0].found)
+    logger.info(
+        "verify_openlibrary_node: %d refs checked, %d found",
+        len(refs),
+        found,
+    )
+
+    return {"openlibrary_results": results}
