@@ -19,29 +19,19 @@ class ReferenceStatus(str, Enum):
     UNRESOLVED = "unresolved"
 
 
-# class ReferenceResult(BaseModel):
-#     # --- LLM should extract ---
-#     title: Optional[str]  # Phase 3, 4, 5 — most important field
-#     authors: Optional[List[str]]  # Phase 2, 3, 5 — list of "Lastname, F." strings
-#     year: Optional[int]  # Phase 2, 3, 5 — just the integer year
-#     venue: Optional[str]  # Phase 5 — journal or conference name
-
-#     # --- Identifiers (extract if present, None if not) ---
-#     doi: Optional[str]  # Phase 2 — "10.xxxx/xxxxx" only, no URL prefix
-#     arxiv_id: Optional[str]  # Phase 4 — "1706.03762" only, no "arXiv:" prefix
-#     url: Optional[str]  # fallback signal
-
-#     # --- Provenance ---
-#     raw_text: str  # the original reference string, always keep this
-
-
 class ReferenceResult(BaseModel):
 
     title: Optional[str] = None
+    # authors: Optional[list[str]] = Field(
+    #     default=None,
+    #     description="Each author string copied verbatim from the text.",
+    # )
     authors: Optional[list[str]] = Field(
         default=None,
-        # description="List of author names exactly as written in the reference. Do not reorder or reformat names.",
-        description="Each author string copied verbatim from the text.",
+        description=(
+            "List of author names. Split into one name per list element. "
+            "Copy each name exactly as written. "
+        ),
     )
     year: Optional[int] = None
     venue: Optional[str] = Field(
@@ -64,6 +54,42 @@ class ReferenceResult(BaseModel):
 
 class ReferenceList(BaseModel):
     references: list[ReferenceResult] = Field(default_factory=list)
+
+
+class VerificationSource(str, Enum):
+    CROSSREF = "crossref"
+    ARXIV = "arxiv"
+    SEMANTIC_SCHOLAR = "semantic_scholar"
+    OPENALEX = "openalex"
+    DBLP = "dblp"
+    OPENLIBRARY = "openlibrary"
+
+
+class SourceResult(BaseModel):
+    """Result from a single verification source."""
+
+    source: VerificationSource
+    found: bool
+    title_similarity: float | None = None  # -------- 0.0–1.0, rapidfuzz score
+    author_match: bool | None = None  # ------------- at least one last name matches
+    year_delta: int | None = None  # ---------------- abs(cited_year - found_year)
+    venue_match: bool | None = None  # -------------- for DBLP
+    retracted: bool = False  # ---------------------- Crossref retraction flag
+    matched_title: str | None = None  # ------------- what the source actually has
+    matched_url: str | None = None  # --------------- link to the real paper
+
+
+class VerificationResult(BaseModel):
+    """Aggregated verification outcome for one reference."""
+
+    reference: ReferenceResult  # ------------------- original extracted reference
+    sources_checked: list[VerificationSource]
+    source_results: list[SourceResult]  # ----------- one per source that ran
+    # populated by score_node
+    confidence: float | None = None  # -------------- 0.0–1.0
+    verdict: str | None = (
+        None  # VERIFIED / NEEDS_REVIEW / LIKELY_HALLUCINATED / RETRACTED
+    )
 
 
 class ReferenceResult_(BaseModel):
@@ -111,21 +137,6 @@ class VerifyRequest(BaseModel):
 # ============================================================================
 
 
-class VerifyResponse(BaseModel):
-    """Response from the /verify endpoint."""
-
-    job_id: str
-    status: VerificationStatus
-    created_at: datetime
-    token_id: str
-    total_references: int = 0
-    verified: int = 0
-    suspicious: int = 0
-    hallucinated: int = 0
-    unresolved: int = 0
-    references: list[ReferenceResult] = Field(default_factory=list)
-
-
 class TokenUsageResponse(BaseModel):
     """Response for admin usage endpoint."""
 
@@ -145,3 +156,46 @@ class AdminTokenListResponse(BaseModel):
 
     tokens: list[TokenUsageResponse]
     total: int
+
+
+class ReferenceVerdict(BaseModel):
+    """
+    The fully resolved result for a single reference — what the API returns.
+    Flattens VerificationResult into a user-facing shape.
+    """
+
+    # Original reference
+    raw_reference: str
+    title: str | None = None
+    authors: list[str] | None = None
+    year: int | None = None
+    doi: str | None = None
+    arxiv_id: str | None = None
+
+    # Verdict
+    verdict: str
+
+    # Sources
+    sources_checked: list[str]  # list of source name strings e.g. ["arxiv", "openalex"]
+
+    # Best match across all sources (highest title_similarity)
+    matched_title: str | None = None
+    matched_url: str | None = None
+    title_similarity: float | None = None
+    author_match: bool | None = None
+    year_delta: int | None = None
+
+
+class VerifySummary(BaseModel):
+    total: int
+    verified: int
+    likely_real: int
+    needs_review: int
+    unverifiable: int
+    likely_hallucinated: int
+    retracted: int
+
+
+class VerifyResponse(BaseModel):
+    summary: VerifySummary
+    references: list[ReferenceVerdict]
