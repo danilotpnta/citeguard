@@ -14,18 +14,12 @@ from app.core.monitoring import performance_tracker
 from app.services.citeguard_service import CiteGuardService
 from app.api.middleware.rate_limit import check_rate_limit
 from app.models.constants import ContentType, UploadConfig
+from app.models.schemas import VerifyRequest, VerifyResponse
 
 from app.core.logging import (
     get_logger,
     set_request_context,
     clear_request_context,
-)
-from app.models.schemas import (
-    ReferenceResult,
-    ReferenceStatus,
-    VerificationStatus,
-    VerifyRequest,
-    VerifyResponse,
 )
 
 router = APIRouter(tags=["verify"])
@@ -57,7 +51,7 @@ async def verify_text(
         with performance_tracker.track("verify_from_text_total"):
             response = await citeguard_service.verify_from_text(
                 raw_input=body.text,
-                content_type="text/plain",
+                content_type="text",
                 token_id=token.token_id,
             )
 
@@ -136,26 +130,3 @@ async def get_result(
         )
 
     return job
-
-
-def _stub_results(text: str) -> list[ReferenceResult]:
-    """
-    Placeholder that returns a fake result.
-    Will be replaced by the LangGraph pipeline in Phase 5.
-    """
-    if not text.strip():
-        return []
-
-    return [
-        ReferenceResult(
-            raw_reference="[stub] No pipeline connected yet",
-            title="Stub Reference",
-            authors=["Pipeline, Not Yet"],
-            year=2025,
-            doi=None,
-            status=ReferenceStatus.UNRESOLVED,
-            confidence=0.0,
-            sources_checked=[],
-            match_details="LangGraph pipeline not yet connected. This is a placeholder response.",
-        )
-    ]
