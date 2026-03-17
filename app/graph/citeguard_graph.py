@@ -1,3 +1,5 @@
+import os
+import argparse
 from app.graph.object.graph_builder import GraphBuilder
 from app.utils.graph.mermaid_renderer import render_langgraph_png
 from app.graph.state import WorkflowState
@@ -18,20 +20,18 @@ builder = GraphBuilder(
 citeguard_graph = builder.build()
 
 
-def save_pipeline_graph(filename="pipeline.png"):
+def save_pipeline_graph(filename="pipeline.png", save_mmd=False):
     parent_dir = os.path.dirname(config.pipeline.citeguard.rendered_graph)
     img_path = os.path.join(parent_dir, filename)
     render_langgraph_png(
         app=builder.app,
         registry=builder.node_registry,
         path=img_path,
+        save_mmd=save_mmd,
     )
 
 
 if __name__ == "__main__":
-    import argparse
-    import os
-
     version = config.pipeline.citeguard.version
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -39,5 +39,10 @@ if __name__ == "__main__":
         "--filename",
         default=f"pipeline_{version}.png",
     )
+    parser.add_argument(
+        "--mmd",
+        action="store_true",
+        help="Also save the Mermaid source (.mmd) alongside the PNG",
+    )
     args = parser.parse_args()
-    save_pipeline_graph(args.filename)
+    save_pipeline_graph(args.filename, save_mmd=args.mmd)

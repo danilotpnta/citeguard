@@ -151,6 +151,7 @@ def render_langgraph_png(
     theme: Literal["dark", "light"] = "dark",
     xray: bool = True,
     show_file_paths: bool = True,
+    save_mmd: bool = False,
     debug: bool = False,
 ) -> None:
     """
@@ -197,6 +198,12 @@ def render_langgraph_png(
             print("=" * 60)
             print(mermaid)
             print("=" * 60)
+
+        if save_mmd:
+            mmd_path = path.replace(".png", ".mmd")
+            with open(mmd_path, "w") as f:
+                f.write(mermaid)
+            print(f"Mermaid source saved to: {mmd_path}")
 
         # Render and save
         png = asyncio.run(_render_mermaid_png(mermaid, theme=theme))
