@@ -60,6 +60,31 @@ def decide_needs_dblp(state: WorkflowState) -> Literal["dblp", "merge"]:
     return "dblp"
 
 
+def decide_needs_web_search(state: WorkflowState) -> Literal["web_search", "merge"]:
+    """
+    Called after: verify_openlibrary_node
+    If web search is configured and there are unresolved refs → verify_web_search_node
+    Otherwise → merge_results_node
+    """
+    from app.core.config import settings
+
+    refs = state.get("refs_needing_web_search", [])
+
+    if not refs:
+        logger.info("decide_needs_web_search: no unresolved refs → merge")
+        return "merge"
+
+    if not settings.web_search_available:
+        logger.info("decide_needs_web_search: no web search backend configured → merge")
+        return "merge"
+
+    logger.info(
+        "decide_needs_web_search: %d unresolved refs → web_search",
+        len(refs),
+    )
+    return "web_search"
+
+
 def decide_needs_openlibrary(state: WorkflowState) -> Literal["openlibrary", "merge"]:
     """
     Called after: verify_dblp_node

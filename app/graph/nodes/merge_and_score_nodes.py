@@ -207,6 +207,7 @@ async def merge_results_node(state: WorkflowState) -> dict:
     search_results: list[VerificationResult] = state.get("search_results", [])
     dblp_results: list[VerificationResult] = state.get("dblp_results", [])
     openlibrary_results: list[VerificationResult] = state.get("openlibrary_results", [])
+    web_search_results: list[VerificationResult] = state.get("web_search_results", [])
 
     # Index by raw_reference for deduplication
     merged: dict[str, VerificationResult] = {}
@@ -217,6 +218,7 @@ async def merge_results_node(state: WorkflowState) -> dict:
         + search_results
         + dblp_results
         + openlibrary_results
+        + web_search_results
     )
 
     for result in all_incoming:
@@ -234,17 +236,16 @@ async def merge_results_node(state: WorkflowState) -> dict:
 
     logger.info(
         "merge_results_node: %d total results "
-        "(doi=%d arxiv=%d search=%d dblp=%d openlibrary=%d deduplicated=%d)",
+        "(doi=%d arxiv=%d search=%d dblp=%d openlibrary=%d web_search=%d deduplicated=%d)",
         len(all_results),
         len(doi_results),
         len(arxiv_results),
         len(search_results),
         len(dblp_results),
         len(openlibrary_results),
+        len(web_search_results),
         len(all_incoming) - len(all_results),
     )
-
-    return {"merged_results": all_results}
 
     return {"merged_results": all_results}
 
