@@ -1,6 +1,7 @@
 use_default_settings: true
 
 server:
+  # secret_key is injected via SEARXNG_SECRET_KEY env var — set it in .env
   limiter: false        # disable rate limiting for local API use
   image_proxy: false
 
