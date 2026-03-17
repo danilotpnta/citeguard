@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.api.middleware.admin_protection import AdminProtectionMiddleware
 from app.api.middleware.killswitch import KillswitchMiddleware
 from app.api.middleware.logging import LoggingMiddleware
 from app.api.routes import admin, health, verify
@@ -43,6 +44,7 @@ def create_app() -> FastAPI:
 
     app.add_middleware(LoggingMiddleware)
     app.add_middleware(KillswitchMiddleware)
+    app.add_middleware(AdminProtectionMiddleware, block_via_proxy=settings.block_admin_via_proxy)
 
     # -- Routes --
     app.include_router(health.router)

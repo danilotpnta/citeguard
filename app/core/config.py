@@ -32,6 +32,7 @@ class Settings(BaseSettings):
 
     # -- Admin --
     admin_api_key: str = "change-me-to-a-long-random-string"
+    block_admin_via_proxy: bool = True  # hide /admin from Cloudflare-proxied requests
 
     # -- Database --
     database_path: str = "data/citeguard.db"
