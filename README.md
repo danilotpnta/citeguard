@@ -90,7 +90,7 @@ docker run --env-file .env -p 8000:8000 citeguard
 
 Citeguard runs a multi-agent pipeline (via LangGraph) that:
 
-![Current Pipeline](config/pipeline/citeguard/v0/pipeline_v0.png)
+![Current Pipeline](config/pipeline/citeguard/v4/pipeline_v4.png)
 
 1. **Extracts** structured references from LLM-generated text
 2. **Verifies** each reference against scholarly databases (Crossref, Semantic Scholar, OpenAlex)
