@@ -55,17 +55,47 @@ Langfuse will be available at `http://localhost:3000`. Create a project and gene
     Then open `.env` and fill in your keys.
 
 **Optional — DBLP local database:**
- 
+
 For better CS conference paper coverage, build a local DBLP index (~4.6GB, runs once):
- 
+
 ```bash
 uv run python scripts/build_dblp_index.py
 ```
- 
+
 This downloads the full DBLP dataset and indexes it locally. After building, set:
 ```
 DBLP_DB_PATH=./data/dblp/dblp.db
 ```
+
+**Optional — Web search fallback:**
+
+For references that all academic databases fail to find, you can enable a last-resort web search stage. Set **one** of the following in your `.env`:
+
+| Option | Setup | Cost | Notes |
+|---|---|---|---|
+| **SearXNG** | Docker (self-hosted) | Free | Best academic coverage — targets Google Scholar, Semantic Scholar, arXiv |
+| **Tavily** | API key | Free tier (1k req/month) | No infrastructure needed — sign up at [tavily.com](https://tavily.com) |
+
+If neither is set, the pipeline skips this stage silently — no breakage.
+
+**SearXNG setup (one command):**
+
+```bash
+docker compose -f docker/searxng/docker-compose.yml up -d
+```
+
+Then add to `.env`:
+```
+SEARXNG_URL=http://localhost:8080
+```
+
+**Tavily setup:**
+
+```
+TAVILY_API_KEY=tvly-xxxxxxxxxx
+```
+
+> Web search results are intentionally scored as `LIKELY_REAL` at best — never `VERIFIED` — reflecting the weaker signal from a general web match compared to a structured academic database lookup.
 
 ## Usage
 

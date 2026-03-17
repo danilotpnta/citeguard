@@ -1,0 +1,43 @@
+use_default_settings: true
+
+server:
+  limiter: false        # disable rate limiting for local API use
+  image_proxy: false
+
+search:
+  formats:
+    - html
+    - json              # must be explicitly enabled — required for citeguard API calls
+
+engines:
+  # Academic engines — primary targets for reference verification
+  - name: google scholar
+    engine: google_scholar
+    categories: science
+    disabled: false
+
+  - name: semantic scholar
+    engine: semantic_scholar
+    categories: science
+    disabled: false
+
+  - name: arxiv
+    engine: arxiv
+    categories: science
+    disabled: false
+
+  - name: crossref
+    engine: crossref
+    categories: science
+    disabled: false
+
+  # General web engines — additional fallback
+  - name: google
+    engine: google
+    categories: general
+    disabled: false
+
+  - name: duckduckgo
+    engine: duckduckgo
+    categories: general
+    disabled: false
