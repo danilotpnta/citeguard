@@ -169,6 +169,20 @@ def _determine_verdict(result: VerificationResult) -> str:
             if 0 < sim < TITLE_THRESHOLD:
                 return NEEDS_REVIEW
 
+    # Rule 8 — LIKELY_REAL: web search found with title match (never VERIFIED — weaker signal)
+    for sr in found_results:
+        if sr.source == VerificationSource.WEB_SEARCH:
+            sim = sr.title_similarity or 0.0
+            if sim >= TITLE_THRESHOLD:
+                return LIKELY_REAL
+
+    # Rule 9 — NEEDS_REVIEW: web search found but title similarity below threshold
+    for sr in found_results:
+        if sr.source == VerificationSource.WEB_SEARCH:
+            sim = sr.title_similarity or 0.0
+            if 0 < sim < TITLE_THRESHOLD:
+                return NEEDS_REVIEW
+
     # Nothing found anywhere — distinguish UNVERIFIABLE from LIKELY_HALLUCINATED
     if not found_results:
 
