@@ -189,6 +189,13 @@ def render_langgraph_png(
             file_color = THEME_FILE_PATH if theme == "dark" else "#666666"
             mermaid = inject_file_labels(mermaid, node_file_map, file_color)
 
+        # Save mermaid source before dark theme (GitHub handles theming natively)
+        if save_mmd:
+            mmd_path = path.replace(".png", ".mmd")
+            with open(mmd_path, "w") as f:
+                f.write(mermaid)
+            print(f"Mermaid source saved to: {mmd_path}")
+
         # Apply dark theme modifications (only for dark mode)
         if theme == "dark":
             mermaid = apply_dark_theme(mermaid)
@@ -198,12 +205,6 @@ def render_langgraph_png(
             print("=" * 60)
             print(mermaid)
             print("=" * 60)
-
-        if save_mmd:
-            mmd_path = path.replace(".png", ".mmd")
-            with open(mmd_path, "w") as f:
-                f.write(mermaid)
-            print(f"Mermaid source saved to: {mmd_path}")
 
         # Render and save
         png = asyncio.run(_render_mermaid_png(mermaid, theme=theme))

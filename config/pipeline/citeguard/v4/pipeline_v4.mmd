@@ -7,17 +7,17 @@ graph TD;
 	__start__([<p>__start__</p>]):::first
 	router_input_node(router_input_node)
 	gather_all_info_node(gather_all_info_node)
-	parse_content_from_file_node(parse_content_from_file_node<br/><small><font color="#ca5e9b">nodes/extraction_nodes.py</font></small>)
-	needs_search_node(needs_search_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
-	extract_references_node(extract_references_node<br/><small><font color="#ca5e9b">nodes/extraction_nodes.py</font></small>)
-	classify_references_node(classify_references_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
 	merge_results_node(merge_results_node<br/><small><font color="#ca5e9b">nodes/merge_and_score_nodes.py</font></small>)
-	verify_doi_node(verify_doi_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
-	verify_openlibrary_node(verify_openlibrary_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
-	verify_dblp_node(verify_dblp_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
-	verify_search_node(verify_search_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
-	score_node(score_node<br/><small><font color="#ca5e9b">nodes/merge_and_score_nodes.py</font></small>)
+	parse_content_from_file_node(parse_content_from_file_node<br/><small><font color="#ca5e9b">nodes/extraction_nodes.py</font></small>)
+	extract_references_node(extract_references_node<br/><small><font color="#ca5e9b">nodes/extraction_nodes.py</font></small>)
 	verify_arxiv_node(verify_arxiv_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
+	verify_doi_node(verify_doi_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
+	verify_search_node(verify_search_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
+	classify_references_node(classify_references_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
+	verify_dblp_node(verify_dblp_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
+	score_node(score_node<br/><small><font color="#ca5e9b">nodes/merge_and_score_nodes.py</font></small>)
+	verify_openlibrary_node(verify_openlibrary_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
+	needs_search_node(needs_search_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
 	__end__([<p>__end__</p>]):::last
 	__start__ --> router_input_node;
 	classify_references_node --> verify_arxiv_node;
@@ -38,6 +38,6 @@ graph TD;
 	verify_search_node -. &nbsp;merge&nbsp; .-> merge_results_node;
 	verify_search_node -. &nbsp;dblp&nbsp; .-> verify_dblp_node;
 	score_node --> __end__;
-	classDef default fill:#1e1e2e,color:#ffffff,stroke:#6c7086,line-height:1.2
+	classDef default fill:#f2f0ff,line-height:1.2
 	classDef first fill-opacity:0
-	classDef last fill:#166F2C,color:#ffffff,stroke:#6272a4,stroke-width:2px
+	classDef last fill:#bfb6fc
