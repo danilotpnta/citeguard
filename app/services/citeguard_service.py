@@ -1,4 +1,3 @@
-
 from app.core.logging import get_logger
 from app.models.schemas import VerifyResponse
 
@@ -16,7 +15,7 @@ class CiteGuardService:
         self,
         raw_input: str,
         token_id: str,
-        content_type: str = "text/plain",
+        content_type: str = "text",
         filename: str | None = None,
     ) -> VerifyResponse:
 
@@ -34,7 +33,7 @@ class CiteGuardService:
                     "filename": filename,
                 }
             )
-            return result
+            return result["verify_response"]
 
     @observe(name="verify_from_file")
     async def verify_from_file(
@@ -59,4 +58,4 @@ class CiteGuardService:
                     "filename": filename,
                 }
             )
-            return result
+            return result["verify_response"]
