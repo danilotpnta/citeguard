@@ -100,7 +100,6 @@ Citeguard runs a multi-agent pipeline (via LangGraph) that:
 
 All runs are traced in Langfuse for full observability.
 
-
  
 ## API Usage
  
