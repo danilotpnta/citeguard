@@ -2,7 +2,7 @@ name: Update Pipeline Diagram
 
 on:
   push:
-    branches: [master]
+    branches: [master, langgraph]
     paths:
       - 'config/pipeline/citeguard/**/pipeline_*.mmd'
 
