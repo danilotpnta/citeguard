@@ -152,8 +152,8 @@ if __name__ == "__main__":
     CLI for managing citeguard access tokens.
 
     Usage:
-        python -m scripts.manage create-token --company "Google" --max-requests 50 --expires-in 30
-        python -m scripts.manage revoke-token abc123def456
-        python -m scripts.manage list-tokens
-        python -m scripts.manage list-tokens --all
+        uv run -m scripts.manage create-token --company "Google" --max-requests 50 --expires-in 30
+        uv run -m scripts.manage revoke-token abc123def456
+        uv run -m scripts.manage list-tokens
+        uv run -m scripts.manage list-tokens --all
     """
