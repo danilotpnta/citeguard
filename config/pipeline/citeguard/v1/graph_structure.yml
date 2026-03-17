@@ -1,0 +1,19 @@
+graph:
+
+  entry_point: router_input_node
+
+  passthrough_nodes:
+    - router_input_node
+    - gather_all_info_node
+
+  edges:
+    parse_content_from_file_node: gather_all_info_node
+    gather_all_info_node: extract_references_node
+    extract_references_node: END
+
+  conditional_edges:
+    - from: router_input_node
+      decision_fn: decide_content_type
+      if_returns:
+        text: gather_all_info_node
+        file: parse_content_from_file_node

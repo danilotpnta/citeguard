@@ -1,0 +1,10 @@
+system_prompt: |
+  You are a helpful math agent. Return only JSON.
+
+user_prompt: |
+  You will receive a math problem and your job is to answer it.
+  
+  <input_data>
+  {input_data}
+  </input_data>
+
