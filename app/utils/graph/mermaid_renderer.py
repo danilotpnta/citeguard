@@ -189,11 +189,16 @@ def render_langgraph_png(
             file_color = THEME_FILE_PATH if theme == "dark" else "#666666"
             mermaid = inject_file_labels(mermaid, node_file_map, file_color)
 
-        # Save mermaid source before dark theme (GitHub handles theming natively)
+        # Save mermaid source before dark theme (GitHub handles theming natively).
+        # Strip classDef lines so GitHub's default light/dark theme applies cleanly.
         if save_mmd:
             mmd_path = path.replace(".png", ".mmd")
+            mmd_for_github = "\n".join(
+                line for line in mermaid.splitlines()
+                if not line.strip().startswith("classDef")
+            )
             with open(mmd_path, "w") as f:
-                f.write(mermaid)
+                f.write(mmd_for_github)
             print(f"Mermaid source saved to: {mmd_path}")
 
         # Apply dark theme modifications (only for dark mode)
