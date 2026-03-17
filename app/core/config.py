@@ -1,7 +1,15 @@
+# app/core/config.py
+
 from pathlib import Path
 from pydantic import Field
 from omegaconf import OmegaConf
 
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+from pathlib import Path
+from pydantic import Field
+from omegaconf import OmegaConf
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,14 +21,14 @@ class Settings(BaseSettings):
     )
 
     # -- Langfuse --
-    langfuse_secret_key: str = Field(..., description="Langfuse secret key")
-    langfuse_public_key: str = Field(..., description="Langfuse public key")
+    langfuse_secret_key: str = Field(default="", description="Langfuse secret key")
+    langfuse_public_key: str = Field(default="", description="Langfuse public key")
     langfuse_base_url: str = "https://cloud.langfuse.com"
 
     # -- LLM --
-    openai_api_key: str = Field(..., description="OpenAI API key")
-    google_api_key: str = Field(..., description="Google API key for Gemini access")
-    groq_api_key: str = Field(..., description="Groq API key for ingredient extraction")
+    openai_api_key: str = Field(default="", description="OpenAI API key")
+    google_api_key: str = Field(default="", description="Google API key")
+    groq_api_key: str = Field(default="", description="Groq API key")
 
     # -- Admin --
     admin_api_key: str = "change-me-to-a-long-random-string"
@@ -32,14 +40,24 @@ class Settings(BaseSettings):
     crossref_mailto: str = ""
     semantic_scholar_api_key: str = ""
     ncbi_api_key: str = ""
+    openalex_mailto: str = ""
+
+    # -- Verification pipeline --
+    field_mode: str = "cs"                    # cs | biomedical | general
+    dblp_db_path: str = "./data/dblp/dblp.db" # path inside container
 
     # -- Logging --
-    log_level: str = Field(..., description="Logging level setting")
-    environment: str = Field(..., description="FastAPI setting")
+    log_level: str = Field(default="INFO", description="Logging level")
+    environment: str = Field(default="development", description="Environment")
 
     @property
     def database_url(self) -> str:
         return str(Path(self.database_path).resolve())
+
+    @property
+    def dblp_available(self) -> bool:
+        """True if the DBLP local database exists and is usable."""
+        return Path(self.dblp_db_path).exists()
 
 
 def get_settings() -> Settings:
