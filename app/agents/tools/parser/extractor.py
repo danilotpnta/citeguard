@@ -1,4 +1,5 @@
 import io
+import re
 from langfuse import observe
 from dotenv import load_dotenv
 from app.core.logging import get_logger
@@ -6,6 +7,25 @@ from app.core.logging import get_logger
 load_dotenv()
 
 logger = get_logger(__name__)
+
+LIGATURE_MAP = str.maketrans(
+    {
+        "ﬀ": "ff",
+        "ﬁ": "fi",
+        "ﬂ": "fl",
+        "ﬃ": "ffi",
+        "ﬄ": "ffl",
+        "\ufffd": "",
+    }
+)
+
+
+def _normalize_extracted_text(text: str) -> str:
+    text = text.translate(LIGATURE_MAP)  # ﬀ→ff etc
+    text = re.sub(r"-\s*\n\s*", "", text)  # cross-line hyphens
+    text = re.sub(r"^\d+\s*$", "", text, flags=re.MULTILINE)  # PDF line numbers
+    text = re.sub(r"\n{3,}", "\n\n", text)  # excess blank lines
+    return text.strip()
 
 
 class ParserTool:
@@ -15,8 +35,10 @@ class ParserTool:
     def _parse_text(raw_input: str | bytes) -> str:
         """Handle plain text input."""
         if isinstance(raw_input, bytes):
-            return raw_input.decode("utf-8", errors="ignore")
-        return raw_input
+            text = raw_input.decode("utf-8", errors="ignore")
+        else:
+            text = raw_input
+        return _normalize_extracted_text(text)
 
     @staticmethod
     @observe(name="_parse_pdf")
@@ -33,7 +55,8 @@ class ParserTool:
         finally:
             doc.close()
 
-        return "\n".join(pages).strip()
+        text = "\n".join(pages).strip()
+        return _normalize_extracted_text(text)
 
     @staticmethod
     @observe(name="_parse_docx")
@@ -48,8 +71,8 @@ class ParserTool:
 
         doc = docx.Document(io.BytesIO(raw_input))
         paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
-
-        return "\n".join(paragraphs).strip()
+        text = "\n".join(paragraphs).strip()
+        return _normalize_extracted_text(text)
 
     @classmethod
     def parse(cls, raw_input: str | bytes, content_type: str) -> str:
@@ -88,7 +111,7 @@ if __name__ == "__main__":
     print(repr(result))
 
     # --- _parse_pdf (requires a real PDF file) ---
-    sample_pdf = pathlib.Path("sample.pdf")
+    sample_pdf = pathlib.Path("tests/assets/sample_references_5.pdf")
     print(sample_pdf)
     if sample_pdf.exists():
         _section("_parse_pdf: sample.pdf")
