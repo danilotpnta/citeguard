@@ -46,6 +46,13 @@ class Settings(BaseSettings):
     field_mode: str = "cs"                    # cs | biomedical | general
     dblp_db_path: str = "./data/dblp/dblp.db" # path inside container
 
+    # -- Web search fallback (optional) --
+    # Set one of these to enable the web search stage.
+    # SearXNG: self-hosted, see docker/searxng/ for setup.
+    # Tavily: cloud API, sign up at https://tavily.com (free tier available).
+    searxng_url: str = ""          # e.g. http://localhost:8080
+    tavily_api_key: str = ""       # e.g. tvly-xxxxxxxxxx
+
     # -- Logging --
     log_level: str = Field(default="INFO", description="Logging level")
     environment: str = Field(default="development", description="Environment")
@@ -58,6 +65,11 @@ class Settings(BaseSettings):
     def dblp_available(self) -> bool:
         """True if the DBLP local database exists and is usable."""
         return Path(self.dblp_db_path).exists()
+
+    @property
+    def web_search_available(self) -> bool:
+        """True if at least one web search backend is configured."""
+        return bool(self.searxng_url or self.tavily_api_key)
 
 
 def get_settings() -> Settings:

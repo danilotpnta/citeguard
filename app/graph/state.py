@@ -49,6 +49,10 @@ class WorkflowState(TypedDict):
     refs_needing_openlibrary: list[ReferenceResult]
     openlibrary_results: list[VerificationResult]
 
+    # web search pass (refs OpenLibrary didn't find — optional, needs SEARXNG_URL or TAVILY_API_KEY)
+    refs_needing_web_search: list[ReferenceResult]
+    web_search_results: list[VerificationResult]
+
     # final
     merged_results: list[VerificationResult]  # all results combined
     verify_response: VerifyResponse
