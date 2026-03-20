@@ -78,11 +78,9 @@ For references that all academic databases fail to find, you can enable a last-r
 
 If neither is set, the pipeline skips this stage silently — no breakage.
 
-**SearXNG setup (one command):**
+**SearXNG setup:**
 
-```bash
-docker compose -f docker/searxng/docker-compose.yml up -d
-```
+See [`docker/searxng/README.md`](docker/searxng/README.md) for full instructions.
 
 Then add to `.env`:
 ```
