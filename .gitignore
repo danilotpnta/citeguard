@@ -53,3 +53,4 @@ dblp/
 # Local development notes
 DEVELOPMENT.md
 
+docker/searxng/settings.yml

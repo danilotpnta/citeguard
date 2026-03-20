@@ -1,7 +1,9 @@
 use_default_settings: true
 
 server:
-  # secret_key is injected via SEARXNG_SECRET_KEY env var — set it in .env
+  # Generate with: python3 -c "import secrets; print(secrets.token_hex(32))"
+  # Copy this file to settings.yml and fill in the key — settings.yml is gitignored
+  secret_key: "your_secret_key_here"
   limiter: false        # disable rate limiting for local API use
   image_proxy: false
 
