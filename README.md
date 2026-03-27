@@ -55,17 +55,45 @@ Langfuse will be available at `http://localhost:3000`. Create a project and gene
     Then open `.env` and fill in your keys.
 
 **Optional — DBLP local database:**
- 
+
 For better CS conference paper coverage, build a local DBLP index (~4.6GB, runs once):
- 
+
 ```bash
 uv run python scripts/build_dblp_index.py
 ```
- 
+
 This downloads the full DBLP dataset and indexes it locally. After building, set:
 ```
 DBLP_DB_PATH=./data/dblp/dblp.db
 ```
+
+**Optional — Web search fallback:**
+
+For references that all academic databases fail to find, you can enable a last-resort web search stage. Set **one** of the following in your `.env`:
+
+| Option | Setup | Cost | Notes |
+|---|---|---|---|
+| **SearXNG** | Docker (self-hosted) | Free | Best academic coverage — targets Google Scholar, Semantic Scholar, arXiv |
+| **Tavily** | API key | Free tier (1k req/month) | No infrastructure needed — sign up at [tavily.com](https://tavily.com) |
+
+If neither is set, the pipeline skips this stage silently — no breakage.
+
+**SearXNG setup:**
+
+See [`docker/searxng/README.md`](docker/searxng/README.md) for full instructions.
+
+Then add to `.env`:
+```
+SEARXNG_URL=http://localhost:8080
+```
+
+**Tavily setup:**
+
+```
+TAVILY_API_KEY=tvly-xxxxxxxxxx
+```
+
+> Web search results are intentionally scored as `LIKELY_REAL` at best — never `VERIFIED` — reflecting the weaker signal from a general web match compared to a structured academic database lookup.
 
 ## Usage
 
@@ -101,17 +129,18 @@ graph TD;
 	__start__([<p>__start__</p>]):::first
 	router_input_node(router_input_node)
 	gather_all_info_node(gather_all_info_node)
-	needs_search_node(needs_search_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
-	verify_openlibrary_node(verify_openlibrary_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
-	classify_references_node(classify_references_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
-	parse_content_from_file_node(parse_content_from_file_node<br/><small><font color="#ca5e9b">nodes/extraction_nodes.py</font></small>)
+	verify_dblp_node(verify_dblp_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
 	verify_search_node(verify_search_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
 	extract_references_node(extract_references_node<br/><small><font color="#ca5e9b">nodes/extraction_nodes.py</font></small>)
-	score_node(score_node<br/><small><font color="#ca5e9b">nodes/merge_and_score_nodes.py</font></small>)
-	merge_results_node(merge_results_node<br/><small><font color="#ca5e9b">nodes/merge_and_score_nodes.py</font></small>)
-	verify_dblp_node(verify_dblp_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
 	verify_doi_node(verify_doi_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
 	verify_arxiv_node(verify_arxiv_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
+	merge_results_node(merge_results_node<br/><small><font color="#ca5e9b">nodes/merge_and_score_nodes.py</font></small>)
+	verify_openlibrary_node(verify_openlibrary_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
+	verify_web_search_node(verify_web_search_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
+	score_node(score_node<br/><small><font color="#ca5e9b">nodes/merge_and_score_nodes.py</font></small>)
+	classify_references_node(classify_references_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
+	needs_search_node(needs_search_node<br/><small><font color="#ca5e9b">nodes/verification_nodes.py</font></small>)
+	parse_content_from_file_node(parse_content_from_file_node<br/><small><font color="#ca5e9b">nodes/extraction_nodes.py</font></small>)
 	__end__([<p>__end__</p>]):::last
 	__start__ --> router_input_node;
 	classify_references_node --> verify_arxiv_node;
@@ -128,9 +157,11 @@ graph TD;
 	verify_dblp_node -. &nbsp;merge&nbsp; .-> merge_results_node;
 	verify_dblp_node -. &nbsp;openlibrary&nbsp; .-> verify_openlibrary_node;
 	verify_doi_node --> needs_search_node;
-	verify_openlibrary_node --> merge_results_node;
+	verify_openlibrary_node -. &nbsp;merge&nbsp; .-> merge_results_node;
+	verify_openlibrary_node -. &nbsp;web_search&nbsp; .-> verify_web_search_node;
 	verify_search_node -. &nbsp;merge&nbsp; .-> merge_results_node;
 	verify_search_node -. &nbsp;dblp&nbsp; .-> verify_dblp_node;
+	verify_web_search_node --> merge_results_node;
 	score_node --> __end__;
 ```
 <!-- PIPELINE_MERMAID_END -->

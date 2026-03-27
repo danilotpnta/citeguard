@@ -169,6 +169,20 @@ def _determine_verdict(result: VerificationResult) -> str:
             if 0 < sim < TITLE_THRESHOLD:
                 return NEEDS_REVIEW
 
+    # Rule 8 — LIKELY_REAL: web search found with title match (never VERIFIED — weaker signal)
+    for sr in found_results:
+        if sr.source == VerificationSource.WEB_SEARCH:
+            sim = sr.title_similarity or 0.0
+            if sim >= TITLE_THRESHOLD:
+                return LIKELY_REAL
+
+    # Rule 9 — NEEDS_REVIEW: web search found but title similarity below threshold
+    for sr in found_results:
+        if sr.source == VerificationSource.WEB_SEARCH:
+            sim = sr.title_similarity or 0.0
+            if 0 < sim < TITLE_THRESHOLD:
+                return NEEDS_REVIEW
+
     # Nothing found anywhere — distinguish UNVERIFIABLE from LIKELY_HALLUCINATED
     if not found_results:
 
@@ -207,6 +221,7 @@ async def merge_results_node(state: WorkflowState) -> dict:
     search_results: list[VerificationResult] = state.get("search_results", [])
     dblp_results: list[VerificationResult] = state.get("dblp_results", [])
     openlibrary_results: list[VerificationResult] = state.get("openlibrary_results", [])
+    web_search_results: list[VerificationResult] = state.get("web_search_results", [])
 
     # Index by raw_reference for deduplication
     merged: dict[str, VerificationResult] = {}
@@ -217,6 +232,7 @@ async def merge_results_node(state: WorkflowState) -> dict:
         + search_results
         + dblp_results
         + openlibrary_results
+        + web_search_results
     )
 
     for result in all_incoming:
@@ -234,17 +250,16 @@ async def merge_results_node(state: WorkflowState) -> dict:
 
     logger.info(
         "merge_results_node: %d total results "
-        "(doi=%d arxiv=%d search=%d dblp=%d openlibrary=%d deduplicated=%d)",
+        "(doi=%d arxiv=%d search=%d dblp=%d openlibrary=%d web_search=%d deduplicated=%d)",
         len(all_results),
         len(doi_results),
         len(arxiv_results),
         len(search_results),
         len(dblp_results),
         len(openlibrary_results),
+        len(web_search_results),
         len(all_incoming) - len(all_results),
     )
-
-    return {"merged_results": all_results}
 
     return {"merged_results": all_results}
 

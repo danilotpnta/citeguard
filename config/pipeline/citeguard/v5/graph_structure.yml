@@ -1,0 +1,58 @@
+graph:
+
+  entry_point: router_input_node
+
+  passthrough_nodes:
+    - router_input_node
+    - gather_all_info_node
+
+  edges:
+    parse_content_from_file_node: gather_all_info_node
+    gather_all_info_node: extract_references_node
+    extract_references_node: classify_references_node
+    verify_web_search_node: merge_results_node
+    merge_results_node: score_node
+    score_node: END
+
+  fanout:
+    - from: classify_references_node
+      to:
+        - verify_doi_node
+        - verify_arxiv_node
+
+  join:
+    - from:
+        - verify_doi_node
+        - verify_arxiv_node
+      to: needs_search_node
+
+  conditional_edges:
+    - from: router_input_node
+      decision_fn: decide_content_type
+      if_returns:
+        text: gather_all_info_node
+        file: parse_content_from_file_node
+
+    - from: needs_search_node
+      decision_fn: decide_needs_search
+      if_returns:
+        search: verify_search_node
+        merge: merge_results_node
+
+    - from: verify_search_node
+      decision_fn: decide_needs_dblp
+      if_returns:
+        dblp: verify_dblp_node
+        merge: merge_results_node
+
+    - from: verify_dblp_node
+      decision_fn: decide_needs_openlibrary
+      if_returns:
+        openlibrary: verify_openlibrary_node
+        merge: merge_results_node
+
+    - from: verify_openlibrary_node
+      decision_fn: decide_needs_web_search
+      if_returns:
+        web_search: verify_web_search_node
+        merge: merge_results_node

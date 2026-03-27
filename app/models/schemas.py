@@ -63,6 +63,7 @@ class VerificationSource(str, Enum):
     OPENALEX = "openalex"
     DBLP = "dblp"
     OPENLIBRARY = "openlibrary"
+    WEB_SEARCH = "web_search"
 
 
 class SourceResult(BaseModel):

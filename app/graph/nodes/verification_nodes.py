@@ -292,7 +292,7 @@ async def verify_openlibrary_node(state: WorkflowState) -> dict:
 
     if not refs:
         logger.info("verify_openlibrary_node: no refs to check")
-        return {"openlibrary_results": []}
+        return {"openlibrary_results": [], "refs_needing_web_search": []}
 
     from app.agents.tools.verifiers.openlibrary import openlibrary_verifier
 
@@ -305,4 +305,35 @@ async def verify_openlibrary_node(state: WorkflowState) -> dict:
         found,
     )
 
-    return {"openlibrary_results": results}
+    refs_needing_web_search = [
+        r.reference
+        for r in results
+        if not r.source_results or not r.source_results[0].found
+    ]
+
+    return {
+        "openlibrary_results": results,
+        "refs_needing_web_search": refs_needing_web_search,
+    }
+
+
+@observe(name="verify_web_search_node")
+async def verify_web_search_node(state: WorkflowState) -> dict:
+    refs = state.get("refs_needing_web_search", [])
+
+    if not refs:
+        logger.info("verify_web_search_node: no refs to check")
+        return {"web_search_results": []}
+
+    from app.agents.tools.verifiers.web_search import web_search_verifier
+
+    results = await web_search_verifier.verify_batch(refs)
+
+    found = sum(1 for r in results if r.source_results and r.source_results[0].found)
+    logger.info(
+        "verify_web_search_node: %d refs checked, %d found",
+        len(refs),
+        found,
+    )
+
+    return {"web_search_results": results}

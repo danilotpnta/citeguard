@@ -252,6 +252,51 @@ class TestDetermineVerdict:
         result.source_results[0].title_similarity = None
         assert _determine_verdict(result) == LIKELY_HALLUCINATED
 
+    # WEB_SEARCH rules
+
+    def test_web_search_high_sim_likely_real(self):
+        ref = make_ref()
+        result = make_verification_result(
+            ref,
+            source=VerificationSource.WEB_SEARCH,
+            found=True,
+            title_similarity=0.92,
+            author_match=None,
+        )
+        assert _determine_verdict(result) == LIKELY_REAL
+
+    def test_web_search_high_sim_never_verified(self):
+        ref = make_ref()
+        result = make_verification_result(
+            ref,
+            source=VerificationSource.WEB_SEARCH,
+            found=True,
+            title_similarity=0.99,
+            author_match=None,
+        )
+        assert _determine_verdict(result) != VERIFIED
+
+    def test_web_search_low_sim_needs_review(self):
+        ref = make_ref()
+        result = make_verification_result(
+            ref,
+            source=VerificationSource.WEB_SEARCH,
+            found=True,
+            title_similarity=0.60,
+            author_match=None,
+        )
+        assert _determine_verdict(result) == NEEDS_REVIEW
+
+    def test_web_search_not_found_hallucinated(self):
+        ref = make_ref()
+        result = make_verification_result(
+            ref,
+            source=VerificationSource.WEB_SEARCH,
+            found=False,
+            title_similarity=None,
+        )
+        assert _determine_verdict(result) == LIKELY_HALLUCINATED
+
 
 # ---------------------------------------------------------------------------
 # merge_results_node

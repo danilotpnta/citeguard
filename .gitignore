@@ -50,3 +50,7 @@ dblp/
 *.db-shm
 *.db-wal
 
+# Local development notes
+DEVELOPMENT.md
+
+docker/searxng/settings.yml
