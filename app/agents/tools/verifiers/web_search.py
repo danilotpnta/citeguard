@@ -44,6 +44,10 @@ from app.models.schemas import (
     VerificationSource,
 )
 
+from dotenv import load_dotenv
+from langfuse import observe
+
+load_dotenv()
 logger = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -152,6 +156,7 @@ class _SearXNGBackend:
         if self._client and not self._client.is_closed:
             await self._client.aclose()
 
+    @observe(name="searxng_get")
     @retry(
         retry=retry_if_exception_type((httpx.TimeoutException, httpx.ConnectError)),
         wait=wait_exponential(multiplier=1, min=1, max=8),
@@ -326,6 +331,7 @@ class WebSearchVerifier:
             matched_url=result.get("url"),
         )
 
+    @observe(name="web_search_verify")
     async def verify(self, ref: ReferenceResult) -> VerificationResult:
         backend = self._get_backend()
 
@@ -379,6 +385,7 @@ class WebSearchVerifier:
             source_results=[source_result],
         )
 
+    @observe(name="web_search_verify_batch")
     async def verify_batch(
         self,
         refs: list[ReferenceResult],
@@ -392,3 +399,56 @@ class WebSearchVerifier:
 # ---------------------------------------------------------------------------
 
 web_search_verifier = WebSearchVerifier()
+
+
+# ---------------------------------------------------------------------------
+# Manual trace runner  —  uv run -m app.agents.tools.verifiers.web_search
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+
+    _REFS = [
+        ReferenceResult(
+            title="Efficient Memory Management for Large Language Model Serving with PagedAttention",
+            authors=[
+                "Woosuk Kwon", "Zhuohan Li", "Siyuan Zhuang", "Ying Sheng",
+                "Lianmin Zheng", "Cody Hao Yu", "Joseph E. Gonzalez",
+                "Hao Zhang", "Ion Stoica",
+            ],
+            year=2023,
+            venue="Proceedings of the ACM SIGOPS 29th Symposium on Operating Systems Principles",
+            raw_reference=(
+                "Woosuk Kwon et al. 2023. Efficient Memory Management for Large Language "
+                "Model Serving with PagedAttention. SOSP."
+            ),
+        ),
+        ReferenceResult(
+            title="GPT-J-6B: A 6 billion parameter autoregressive language model",
+            authors=["Ben Wang", "Aran Komatsuzaki"],
+            year=2021,
+            raw_reference="Ben Wang and Aran Komatsuzaki. 2021. GPT-J-6B: A 6 billion parameter autoregressive language model.",
+        ),
+        ReferenceResult(
+            title="Gpt-4 technical report",
+            authors=["R OpenAI"],
+            year=2023,
+            arxiv_id="2303.08774",
+            raw_reference='R OpenAI. 2023. "Gpt-4 technical report. arxiv 2303.08774."',
+        ),
+    ]
+
+    @observe(name="trace_web_search")
+    async def _run():
+        results = await web_search_verifier.verify_batch(_REFS)
+        print(f"\n{'─' * 60}")
+        for vr in results:
+            sr = vr.source_results[0]
+            print(f"Title : {vr.reference.title}")
+            print(f"Found : {sr.found}")
+            if sr.found:
+                print(f"Sim   : {sr.title_similarity:.2f}")
+                print(f"URL   : {sr.matched_url}")
+            print(f"{'─' * 60}")
+        await web_search_verifier.close()
+
+    asyncio.run(_run())
