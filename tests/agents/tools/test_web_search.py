@@ -193,10 +193,10 @@ class TestWebSearchVerifierUnit:
 
     async def test_verify_no_backend_returns_not_found(self):
         verifier = WebSearchVerifier()
-        verifier._backend = None
-        verifier._backend_name = "none"
-
-        result = await verifier.verify(make_ref())
+        with patch("app.agents.tools.verifiers.web_search.settings") as mock_settings:
+            mock_settings.searxng_url = None
+            mock_settings.tavily_api_key = None
+            result = await verifier.verify(make_ref())
         assert result.source_results[0].found is False
 
     async def test_verify_backend_exception_is_silent(self):
